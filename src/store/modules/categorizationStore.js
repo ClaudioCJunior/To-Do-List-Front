@@ -15,8 +15,6 @@ const actions = {
     try{
         const response = await api.get('/categorization');
 
-        console.log(response.data);
-
         if(response.data.length > 0){
             dispatch('setCategorizations', response.data);
         }

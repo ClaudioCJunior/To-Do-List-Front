@@ -27,10 +27,16 @@ const actions = {
         return console.error(error.response.data.error);
     }
   },
+  async delete ({dispatch, state}, obj) {
+    try{
+        const response = await api.delete(`/task/${obj.id}`);
+        return response;
+    }catch(error) {
+        return console.error(error.response.data.error);
+    }
+  },
   async getAll ({dispatch, state}, queryString) {
     try{
-      console.log(queryString);
-
         const response = await api.get(`/task?${queryString}`);
 
         if(response.status == 200)

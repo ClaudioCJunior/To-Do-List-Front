@@ -17,8 +17,6 @@ const getters = {
 const actions = {
   async authenticate ({dispatch, state}, user) {
     try{
-      console.log(user);
-
     const response = await api.post('/auth/login', user)
         if(response.status === 200){
           dispatch('setUser', response.data.user);
@@ -70,7 +68,6 @@ const actions = {
       api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
 
       if(response.status === 200){
-        console.log("Token válido");
         dispatch('setUser', response.data.user);
         dispatch('setToken', response.data.token);
         dispatch('setTokenStorage', response.data.token);

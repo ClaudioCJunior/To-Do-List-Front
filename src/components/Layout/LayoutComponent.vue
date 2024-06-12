@@ -7,7 +7,6 @@ const router = useRouter()
 const store = useStore()
 
 onMounted(() => {
-  //console.log('Rota Atual:', router.currentRoute.value.name);
   redirectRoute(router.currentRoute.value.name);
 });
 

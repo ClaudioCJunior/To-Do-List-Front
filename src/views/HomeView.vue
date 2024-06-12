@@ -11,9 +11,19 @@ const user = reactive({
   image: "../assets/img/bruce-mars.jpg"
 });
 
-const categorizations = reactive([]);
+const categorizations = reactive([
+  {
+    id: 0,
+    name: "General",
+    icon: "ni ni-books"
+  }
+]);
 
 const tasks = reactive([]);
+
+const completedName = ref("Concluir");
+
+completedName
 
 const manipulateTasks = reactive({
     filter: [
@@ -41,6 +51,11 @@ const objTaskSave = reactive({
 });
 
 const categorizationModel = reactive([
+{
+    id: 0,
+    name: "General",
+    selected: false,
+  },
   {
     id: 1,
     name: "Home",
@@ -63,6 +78,15 @@ const categorizationModel = reactive([
   },
 ]);
 
+const categorizationFilter = reactive(
+  {
+    id: 0,
+    name: "",
+  }
+);
+
+
+
 onMounted(async () => {
   user.name = store.state.userStore.user.name;
   user.email = store.state.userStore.user.email;
@@ -84,8 +108,6 @@ onMounted(async () => {
   let i = 0;
 
   for (const categorization of storeCategorization) {
-    console.log(categorization)
-
     let objCat = {
       id: categorization.id,
       name: categorization.name,
@@ -105,7 +127,6 @@ async function findTasks(){
 
   const storeTasks = store.state.taskStore.tasks;
 
-  console.log(storeTasks);
 
   tasks.splice(0, tasks.length);
 
@@ -148,8 +169,6 @@ async function getTasks() {
 }
 
 async function setManipulateTasksAndFindTasks() {
-  console.log(filters);
-
   manipulateTasks.filter = [];
 
   manipulateTasks.filter.push({ field: "completionStatus", value: filters.completionStatus });
@@ -164,9 +183,17 @@ async function setManipulateTasksAndFindTasks() {
     manipulateTasks.filter.push({ field: "evaluationPoints", value: filters.evaluationPoints });
   }
 
-  console.log(manipulateTasks);
+  if(categorizationFilter.id > 0){
+    manipulateTasks.filter.push({ field: "categorization", value: categorizationFilter.id });
+  }
 
   await findTasks();
+
+  if(filters.completionStatus){
+    completedName.value = "Retornar";
+  }else{
+    completedName.value = "Concluir";
+  }
 }
 
 async function saveNewTask() {
@@ -181,7 +208,6 @@ async function saveNewTask() {
 
   const response = await objUseStore.dispatch('taskStore/create', objTaskSave);
 
-  console.log(response)
   
   if(response.status == 201){
       objTaskSave.title= "";
@@ -223,15 +249,35 @@ function toQueryString(obj) {
 
 
 async function handleCheckboxClick(task, key){
-  console.log(task)
-  console.log(key)
-
   const obj = { 
     id: task.id,
     completionStatus: !task.completionStatus
   } 
 
   const response = await objUseStore.dispatch('taskStore/updateStatus', obj);
+
+  if(response.status == 200){
+    await findTasks();
+  }
+}
+
+async function handleCategorizationClick(categorization){
+  categorizationFilter.id = categorization.id;
+  categorizationFilter.name = categorization.name;
+
+  manipulateTasks.filter = [];
+
+  if(categorizationFilter.id > 0){
+    manipulateTasks.filter.push({ field: "categorization", value: categorization.id });
+  }
+
+  console.log(manipulateTasks);
+
+  await findTasks();
+}
+
+async function handleDeleteTask(task){
+  const response = await objUseStore.dispatch('taskStore/delete', task);
 
   if(response.status == 200){
     await findTasks();
@@ -277,8 +323,8 @@ async function handleCheckboxClick(task, key){
       <div class="container-fluid py-4">
         <div class="row">
           <div class="row">
-            <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4" v-for="(categorization, key) in categorizations" :key="key">
-              <div class="card move-on-hover overflow-hidden">
+            <div class="col-xl-2 col-sm-6 mb-xl-0 mb-4" v-for="(categorization, key) in categorizations" :key="key">
+              <div class="card move-on-hover overflow-hidden" @click="handleCategorizationClick(categorization)">
                 <div class="card-body p-3">
                   <div class="row">
                     <div class="col-8">
@@ -354,7 +400,7 @@ async function handleCheckboxClick(task, key){
                         </div>
                       </div>
                     </div>
-                    <button type="submit" class="btn bg-gradient-success float-end">Alterar</button>
+                    <button type="submit" class="btn bg-gradient-success float-end">Incluir</button>
                   </form>
                 </div>
               </div>
@@ -364,7 +410,8 @@ async function handleCheckboxClick(task, key){
                 <div class="card-header pb-0">
                   <div class="row">
                     <div class="col-lg-6 col-7">
-                      <h6>Tarefas</h6>
+                      <h6 v-if="categorizationFilter.name !== ''">Tarefas - {{ categorizationFilter.name }}</h6>
+                      <h6 v-else>Tarefas - Gerais</h6>
                       <!-- <p class="text-sm mb-0">
                         <i class="fa fa-check text-info" aria-hidden="true"></i>
                         Ultimos <span class="font-weight-bold ms-1">30 </span> dias
@@ -374,22 +421,26 @@ async function handleCheckboxClick(task, key){
                 </div>
                 <table class="table">
                   <tr>
+                    <th scope="col">{{ completedName }}</th>
                     <th scope="col-2">Titulo</th>
                     <th scope="col">Descrição</th>
                     <th scope="col">Prioridade</th>
-                    <th scope="col">Data Venc.</th>
+                    <th scope="col">Data Vencimento</th>
                     <th scope="col">Pontos</th>
-                    <th scope="col">Concluir</th>
+                    <th scope="col"></th>
                   </tr>
                   <tbody>
                     <tr v-for="(task, key) in tasks" :key="key">
+                      <td>
+                        <input class="form-check-input" type="checkbox" id="defaultCheck1" v-model="task.completionStatus" @click="handleCheckboxClick(task, key)">
+                      </td>
                       <td>{{ task.title }}</td>
                       <td>{{ task.description }}</td>
                       <td>{{ task.priorityFormatted }}</td>
                       <td>{{ task.dateFormatted }}</td>
                       <td>{{ task.evaluationPoints }}</td>
                       <td>
-                        <input class="form-check-input" type="checkbox" id="defaultCheck1" @click="handleCheckboxClick(task, key)">
+                        <button type="button" class="btn bg-gradient-danger btn-sm" @click="handleDeleteTask(task)">Deletar</button>
                       </td>
                     </tr>
                   </tbody>
@@ -436,7 +487,7 @@ async function handleCheckboxClick(task, key){
                       <input class="form-control" type="number" v-model="filters.evaluationPoints">
                       </div>
                     </div>
-                    <button type="submit" class="btn bg-gradient-primary float-end">Alterar</button>
+                    <button type="submit" class="btn bg-gradient-info float-end">Filtrar</button>
                   </form>
                 </div>
               </div>
