@@ -39,7 +39,13 @@ const filters = reactive({
   evaluationPoints: 0
 });
 
+const sort = reactive({
+  field: "",
+  direction: ""
+});
+
 const objTaskSave = reactive({
+  id: 0,
   title: "",
   description: "",
   completionStatus : false,
@@ -206,10 +212,16 @@ async function saveNewTask() {
     .filter(categorization => categorization.selected)
     .map(categorization => categorization.id);
 
-  const response = await objUseStore.dispatch('taskStore/create', objTaskSave);
+  let response = null;  
 
-  
-  if(response.status == 201){
+  if(objTaskSave.id > 0){
+    response = await objUseStore.dispatch('taskStore/update', objTaskSave);
+  }else{
+    response = await objUseStore.dispatch('taskStore/create', objTaskSave);
+  }
+
+  if(response.status == 201 || response.status == 200){
+      objTaskSave.id = 0;
       objTaskSave.title= "";
       objTaskSave.description= "";
       objTaskSave.completionStatus = false;
@@ -218,6 +230,10 @@ async function saveNewTask() {
       objTaskSave.evaluationPoints = 0;
       objTaskSave.dateFormatted = "";
       objTaskSave.listCategorization = [];
+
+      categorizationModel.forEach(categorization => {
+        categorization.selected = false;
+      });
 
       await findTasks();
   }
@@ -282,6 +298,36 @@ async function handleDeleteTask(task){
   if(response.status == 200){
     await findTasks();
   }
+}
+
+async function handleSortDirectionChange() {
+    manipulateTasks.sort.field = sort.field;
+  manipulateTasks.sort.direction = sort.direction;
+
+  await findTasks();
+}
+
+async function handleUpdateTask(task){
+  objTaskSave.id = task.id;
+  objTaskSave.title = task.title;
+  objTaskSave.description = task.description;
+  objTaskSave.completionStatus = task.completionStatus;
+  objTaskSave.dueDate = task.dueDate;
+  objTaskSave.priority = task.priority;
+  objTaskSave.evaluationPoints = task.evaluationPoints;
+  objTaskSave.dateFormatted = task.dateFormatted;
+
+  categorizationModel.forEach(categorization => {
+    categorization.selected = false;
+  });
+
+  task.categorizations.forEach(categorization => {
+    const index = categorizationModel.findIndex(c => c.id === categorization.id);
+
+    if(index > -1){
+      categorizationModel[index].selected = true;
+    }
+  });
 }
 
 
@@ -355,7 +401,8 @@ async function handleDeleteTask(task){
                 <div class="card-header pb-0">
                   <div class="row">
                     <div class="col-12">
-                      <h6>Nova Tarefa</h6>
+                      <h6 v-if=" objTaskSave.id > 0">Alterar Tarefa</h6>
+                      <h6 v-else>Nova Tarefa</h6>
                     </div>
                   </div>
                 </div>
@@ -391,7 +438,7 @@ async function handleDeleteTask(task){
                       <div class="form-group">
                         <label for="example-text-input" class="form-control-label">Categoria </label>
                         <div v-for="(categorization, index) in categorizations" :key="index">
-                          <div>
+                          <div v-if="categorization.id > 0">
                             <label class="form-check-label">
                               <input class="form-check-input" type="checkbox" :value="categorization.id" v-model="categorizationModel[index].selected">
                               {{ categorization.name }}
@@ -400,7 +447,8 @@ async function handleDeleteTask(task){
                         </div>
                       </div>
                     </div>
-                    <button type="submit" class="btn bg-gradient-success float-end">Incluir</button>
+                    <button v-if="objTaskSave.id > 0" type="submit" class="btn bg-gradient-primary float-end">Alterar</button>
+                    <button v-else type="submit" class="btn bg-gradient-success float-end">Incluir</button>
                   </form>
                 </div>
               </div>
@@ -409,25 +457,43 @@ async function handleDeleteTask(task){
               <div class="card">
                 <div class="card-header pb-0">
                   <div class="row">
-                    <div class="col-lg-6 col-7">
+                    <div class="col-lg-8 col-7">
                       <h6 v-if="categorizationFilter.name !== ''">Tarefas - {{ categorizationFilter.name }}</h6>
                       <h6 v-else>Tarefas - Gerais</h6>
-                      <!-- <p class="text-sm mb-0">
-                        <i class="fa fa-check text-info" aria-hidden="true"></i>
-                        Ultimos <span class="font-weight-bold ms-1">30 </span> dias
-                      </p> -->
+                    </div>
+                    <div class="col-lg-4 col-7">
+                      <div class="row">
+                        <div class="col">
+                            <select class="form-control" v-model="sort.field" @change="handleSortDirectionChange()">
+                            <option value="">Ordenar Por</option>
+                            <option value="title">Titulo</option>
+                            <option value="description">Descrição</option>
+                            <option value="priority">Prioridade</option>
+                            <option value="dueDate">Data Vencimento</option>
+                            <option value="evaluationPoints">Pontos Avaliação</option>
+                          </select>
+                        </div>
+                        <div class="col">
+                            <select class="form-control" v-model="sort.direction" @change="handleSortDirectionChange()">
+                              <option value="">Direção</option>
+                              <option value="ASC">ASC</option>
+                              <option value="DESC">DESC</option>
+                            </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
                 <table class="table">
                   <tr>
-                    <th scope="col">{{ completedName }}</th>
-                    <th scope="col-2">Titulo</th>
-                    <th scope="col">Descrição</th>
-                    <th scope="col">Prioridade</th>
-                    <th scope="col">Data Vencimento</th>
-                    <th scope="col">Pontos</th>
-                    <th scope="col"></th>
+                    <th scope="col" style="width: 10%;">{{ completedName }}</th>
+                    <th scope="col" style="width: 20%;">Titulo</th>
+                    <th scope="col" style="width: 20%;">Descrição</th>
+                    <th scope="col" style="width: 10%;">Prioridade</th>
+                    <th scope="col" style="width: 10%;">Data Vencimento</th>
+                    <th scope="col" style="width: 10%;">Pontos Avaliação</th>
+                    <th scope="col" style="width: 5%;"></th>
+                    <th scope="col" style="width: 5%;"></th>
                   </tr>
                   <tbody>
                     <tr v-for="(task, key) in tasks" :key="key">
@@ -440,8 +506,12 @@ async function handleDeleteTask(task){
                       <td>{{ task.dateFormatted }}</td>
                       <td>{{ task.evaluationPoints }}</td>
                       <td>
+                        <button type="button" class="btn bg-gradient-info btn-sm" @click="handleUpdateTask(task)">Editar</button>
+                      </td>
+                      <td>
                         <button type="button" class="btn bg-gradient-danger btn-sm" @click="handleDeleteTask(task)">Deletar</button>
                       </td>
+                     
                     </tr>
                   </tbody>
                 </table>

@@ -27,6 +27,14 @@ const actions = {
         return console.error(error.response.data.error);
     }
   },
+  async update ({dispatch, state}, obj) {
+    try{
+        const response = await api.put(`/task/${obj.id}`, obj);
+        return response;
+    }catch(error) {
+        return console.error(error.response.data.error);
+    }
+  },
   async delete ({dispatch, state}, obj) {
     try{
         const response = await api.delete(`/task/${obj.id}`);
