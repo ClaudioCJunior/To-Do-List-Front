@@ -203,7 +203,9 @@ async function setManipulateTasksAndFindTasks() {
 }
 
 async function saveNewTask() {
-  const formattedDueDate = new Date(objTaskSave.dateFormatted).toISOString();
+  console.log(objTaskSave.dateFormatted.split('/').reverse().join('-'));
+
+  const formattedDueDate = new Date(objTaskSave.dateFormatted.split('/').reverse().join('-')).toISOString();
   objTaskSave.dueDate = formattedDueDate;
 
   objTaskSave.priority = parseInt(objTaskSave.priority);
